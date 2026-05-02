@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BlinkUIProvider, Toaster } from '@blinkdotnew/ui'
 import App from './App'
 import './index.css'
+import './styles/auth.css'
 import Card from './components/card'
 
 const queryClient = new QueryClient()
