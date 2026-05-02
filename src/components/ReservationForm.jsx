@@ -1,28 +1,14 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, toast } from '@blinkdotnew/ui'
 import { AlertCircle } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { Book, LibraryUser, Employee } from '../types'
+import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 
-interface Props {
-  books: Book[]
-  users: LibraryUser[]
-  employees: Employee[]
-  onSuccess: () => void
-  onCancel: () => void
-}
-
-interface FormValues {
-  bookId: string
-  userId: string
-  reservationDate: string
-  returnDate: string
-  userStatus: 'active' | 'inactive' | 'suspended'
-  employeeId: string
-}
-
-export default function ReservationForm({ books, users, employees, onSuccess, onCancel }: Props) {
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
+export default function ReservationForm({ books, users, employees, onSuccess, onCancel }) {
+  const storageKey = 'form:reservation:new'
+  const draft = loadDraft(storageKey, {})
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
       bookId: '',
       userId: '',
@@ -30,28 +16,31 @@ export default function ReservationForm({ books, users, employees, onSuccess, on
       returnDate: '',
       userStatus: 'active',
       employeeId: '',
+      ...draft,
     },
   })
 
+  useEffect(() => {
+    const subscription = watch((values) => saveDraft(storageKey, values))
+    return () => subscription.unsubscribe?.()
+  }, [watch, storageKey])
+
   const bookId = watch('bookId')
   const userId = watch('userId')
-  const userStatus = watch('userStatus')
   const employeeId = watch('employeeId')
-
-  // Only show books that are available (not on loan)
   const availableBooks = books.filter(b => Number(b.available) > 0)
   const noAvailableBooks = availableBooks.length === 0
-
   const selectedUser = users.find(u => u.id === userId)
   const selectedEmployee = employees.find(e => e.id === employeeId)
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values) => {
     try {
       await blink.db.reservations.create({
         ...values,
         id: `RES-${Date.now()}`,
         createdAt: new Date().toISOString(),
       })
+      clearDraft(storageKey)
       toast.success('Reserva registrada correctamente')
       onSuccess()
     } catch {
@@ -61,8 +50,6 @@ export default function ReservationForm({ books, users, employees, onSuccess, on
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
-      {/* Book selector — only available books */}
       <div className="space-y-1">
         <label className="text-sm font-medium">Libro *</label>
         {noAvailableBooks ? (
@@ -116,7 +103,7 @@ export default function ReservationForm({ books, users, employees, onSuccess, on
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Estado del usuario *</label>
-        <Select value={userStatus} onValueChange={v => setValue('userStatus', v as FormValues['userStatus'])}>
+        <Select value={userStatus} onValueChange={v => setValue('userStatus', v)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Activo</SelectItem>
@@ -145,10 +132,7 @@ export default function ReservationForm({ books, users, employees, onSuccess, on
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting || noAvailableBooks || !bookId || !userId || !employeeId}
-        >
+        <Button type="submit" disabled={isSubmitting || noAvailableBooks || !bookId || !userId || !employeeId}>
           {isSubmitting ? 'Guardando...' : 'Registrar Reserva'}
         </Button>
       </div>

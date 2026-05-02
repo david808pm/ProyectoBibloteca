@@ -14,7 +14,6 @@ import BooksPage from './pages/BooksPage'
 import LoansPage from './pages/LoansPage'
 import ReservationsPage from './pages/ReservationsPage'
 
-// ── Routes ─────────────────────────────────────────────────────
 const rootRoute = createRootRoute({ component: RootLayout })
 const dashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: DashboardPage })
 const usersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/users', component: UsersPage })
@@ -27,11 +26,6 @@ const routeTree = rootRoute.addChildren([dashboardRoute, usersRoute, employeesRo
 
 const router = createRouter({ routeTree })
 
-declare module '@tanstack/react-router' {
-  interface Register { router: typeof router }
-}
-
-// ── Layout ─────────────────────────────────────────────────────
 const navItems = [
   { href: '/', label: 'Panel Principal', icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: '/users', label: 'Usuarios', icon: <Users className="h-4 w-4" /> },

@@ -1,39 +1,33 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, toast } from '@blinkdotnew/ui'
 import { blink } from '../blink/client'
-import type { LibraryUser } from '../types'
+import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 
-interface Props {
-  initialData?: LibraryUser | null
-  onSuccess: () => void
-  onCancel: () => void
-}
-
-interface FormValues {
-  id: string
-  firstName: string
-  lastName: string
-  phone: string
-  email: string
-  userType: 'student' | 'teacher' | 'external'
-}
-
-export default function UserForm({ initialData, onSuccess, onCancel }: Props) {
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
+export default function UserForm({ initialData, onSuccess, onCancel }) {
+  const storageKey = initialData ? `form:user:${initialData.id}` : 'form:user:new'
+  const draft = loadDraft(storageKey, {})
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
       id: initialData?.id ?? '',
       firstName: initialData?.firstName ?? '',
       lastName: initialData?.lastName ?? '',
       phone: initialData?.phone ?? '',
       email: initialData?.email ?? '',
-      userType: (initialData?.userType as FormValues['userType']) ?? 'student',
+      userType: initialData?.userType ?? 'student',
+      ...draft,
     },
   })
+
+  useEffect(() => {
+    const subscription = watch((values) => saveDraft(storageKey, values))
+    return () => subscription.unsubscribe?.()
+  }, [watch, storageKey])
 
   const userType = watch('userType')
   const isEditing = !!initialData
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values) => {
     try {
       if (isEditing) {
         await blink.db.libraryUsers.update(initialData.id, {
@@ -45,7 +39,6 @@ export default function UserForm({ initialData, onSuccess, onCancel }: Props) {
         })
         toast.success('Usuario actualizado')
       } else {
-        // Check ID not already taken
         const existing = await blink.db.libraryUsers.get(values.id.trim())
         if (existing) {
           toast.error(`El ID "${values.id}" ya está registrado`)
@@ -62,6 +55,7 @@ export default function UserForm({ initialData, onSuccess, onCancel }: Props) {
         })
         toast.success('Usuario creado correctamente')
       }
+      clearDraft(storageKey)
       onSuccess()
     } catch {
       toast.error('Error al guardar el usuario')
@@ -70,7 +64,6 @@ export default function UserForm({ initialData, onSuccess, onCancel }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* ID field — editable only on create */}
       <div className="space-y-1">
         <label className="text-sm font-medium">
           ID de Usuario *
@@ -113,7 +106,7 @@ export default function UserForm({ initialData, onSuccess, onCancel }: Props) {
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Tipo de usuario *</label>
-        <Select value={userType} onValueChange={(v) => setValue('userType', v as FormValues['userType'])}>
+        <Select value={userType} onValueChange={(v) => setValue('userType', v)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="student">Estudiante</SelectItem>

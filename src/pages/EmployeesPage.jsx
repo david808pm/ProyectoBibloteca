@@ -7,25 +7,20 @@ import {
 } from '@blinkdotnew/ui'
 import { Briefcase, Plus, Trash2, Edit2 } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { Employee } from '../types'
-import type { ColumnDef } from '@tanstack/react-table'
 import EmployeeForm from '../components/EmployeeForm'
 
 export default function EmployeesPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Employee | null>(null)
+  const [editing, setEditing] = useState(null)
 
-  const { data: employees = [], isLoading } = useQuery<Employee[]>({
+  const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees'],
-    queryFn: async () => {
-      const result = await blink.db.employees.list({ orderBy: { createdAt: 'desc' } })
-      return result as Employee[]
-    },
+    queryFn: async () => await blink.db.employees.list({ orderBy: { createdAt: 'desc' } }),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => blink.db.employees.delete(id),
+    mutationFn: (id) => blink.db.employees.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
       toast.success('Empleado eliminado')
@@ -33,7 +28,7 @@ export default function EmployeesPage() {
     onError: () => toast.error('Error al eliminar el empleado'),
   })
 
-  const columns: ColumnDef<Employee>[] = [
+  const columns = [
     { accessorKey: 'id', header: 'ID', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.id}</span> },
     { accessorKey: 'firstName', header: 'Nombre', cell: ({ row }) => `${row.original.firstName} ${row.original.lastName}` },
     { accessorKey: 'email', header: 'Correo' },

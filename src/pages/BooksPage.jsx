@@ -7,25 +7,21 @@ import {
 } from '@blinkdotnew/ui'
 import { BookOpen, Plus, Trash2, Search, MapPin } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { Book } from '../types'
-import type { ColumnDef } from '@tanstack/react-table'
 import BookForm from '../components/BookForm'
+import Card from '../components/card'
 
 export default function BooksPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [shelfSearch, setShelfSearch] = useState('')
 
-  const { data: books = [], isLoading } = useQuery<Book[]>({
+  const { data: books = [], isLoading } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => {
-      const result = await blink.db.books.list({ orderBy: { createdAt: 'desc' } })
-      return result as Book[]
-    },
+    queryFn: async () => await blink.db.books.list({ orderBy: { createdAt: 'desc' } }),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => blink.db.books.delete(id),
+    mutationFn: (id) => blink.db.books.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] })
       toast.success('Libro eliminado')
@@ -37,7 +33,7 @@ export default function BooksPage() {
     ? books.filter(b => b.shelfLocation.toLowerCase().includes(shelfSearch.toLowerCase()) || b.genre.toLowerCase().includes(shelfSearch.toLowerCase()))
     : books
 
-  const columns: ColumnDef<Book>[] = [
+  const columns = [
     { accessorKey: 'title', header: 'Título' },
     { accessorKey: 'author', header: 'Autor' },
     { accessorKey: 'editor', header: 'Editorial' },
@@ -115,3 +111,4 @@ export default function BooksPage() {
     </Page>
   )
 }
+
