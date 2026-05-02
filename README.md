@@ -56,4 +56,4 @@ The detection happens during the `npm run lint` command, which will:
 - Show exactly which variables need to be added to your CSS file
 - Integrate seamlessly with your development workflow
 
-This prevents runtime CSS issues where Tailwind classes reference undefined CSS variables.
+This prevents runtime CSS issues where Tailwind classes reference undefined CSS variables.# bibliosystem

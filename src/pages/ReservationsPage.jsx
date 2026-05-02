@@ -7,8 +7,6 @@ import {
 } from '@blinkdotnew/ui'
 import { CalendarCheck, Plus, Trash2 } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { Reservation, Book, LibraryUser, Employee } from '../types'
-import type { ColumnDef } from '@tanstack/react-table'
 import ReservationForm from '../components/ReservationForm'
 import { format } from 'date-fns'
 
@@ -16,28 +14,28 @@ export default function ReservationsPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
-  const { data: reservations = [], isLoading } = useQuery<Reservation[]>({
+  const { data: reservations = [], isLoading } = useQuery({
     queryKey: ['reservations'],
-    queryFn: async () => blink.db.reservations.list({ orderBy: { createdAt: 'desc' } }) as Promise<Reservation[]>,
+    queryFn: async () => await blink.db.reservations.list({ orderBy: { createdAt: 'desc' } }),
   })
 
-  const { data: books = [] } = useQuery<Book[]>({
+  const { data: books = [] } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => blink.db.books.list() as Promise<Book[]>,
+    queryFn: async () => await blink.db.books.list(),
   })
 
-  const { data: users = [] } = useQuery<LibraryUser[]>({
+  const { data: users = [] } = useQuery({
     queryKey: ['library_users'],
-    queryFn: async () => blink.db.libraryUsers.list() as Promise<LibraryUser[]>,
+    queryFn: async () => await blink.db.libraryUsers.list(),
   })
 
-  const { data: employees = [] } = useQuery<Employee[]>({
+  const { data: employees = [] } = useQuery({
     queryKey: ['employees'],
-    queryFn: async () => blink.db.employees.list() as Promise<Employee[]>,
+    queryFn: async () => await blink.db.employees.list(),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => blink.db.reservations.delete(id),
+    mutationFn: (id) => blink.db.reservations.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] })
       toast.success('Reserva eliminada')
@@ -49,18 +47,18 @@ export default function ReservationsPage() {
   const userMap = Object.fromEntries(users.map(u => [u.id, u]))
   const empMap = Object.fromEntries(employees.map(e => [e.id, e]))
 
-  const userStatusBadge: Record<string, 'default' | 'secondary' | 'destructive'> = {
+  const userStatusBadge = {
     active: 'default',
     inactive: 'secondary',
     suspended: 'destructive',
   }
-  const userStatusLabel: Record<string, string> = {
+  const userStatusLabel = {
     active: 'Activo',
     inactive: 'Inactivo',
     suspended: 'Suspendido',
   }
 
-  const columns: ColumnDef<Reservation>[] = [
+  const columns = [
     { accessorKey: 'id', header: 'ID Reserva', cell: ({ row }) => <span className="font-mono text-xs">{row.original.id}</span> },
     {
       accessorKey: 'bookId', header: 'Libro',

@@ -7,8 +7,6 @@ import {
 } from '@blinkdotnew/ui'
 import { BookMarked, Plus, Trash2 } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { Loan, Book, LibraryUser } from '../types'
-import type { ColumnDef } from '@tanstack/react-table'
 import LoanForm from '../components/LoanForm'
 import { format } from 'date-fns'
 
@@ -16,27 +14,23 @@ export default function LoansPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
-  const { data: loans = [], isLoading } = useQuery<Loan[]>({
+  const { data: loans = [], isLoading } = useQuery({
     queryKey: ['loans'],
-    queryFn: async () => {
-      const result = await blink.db.loans.list({ orderBy: { createdAt: 'desc' } })
-      return result as Loan[]
-    },
+    queryFn: async () => await blink.db.loans.list({ orderBy: { createdAt: 'desc' } }),
   })
 
-  const { data: books = [] } = useQuery<Book[]>({
+  const { data: books = [] } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => blink.db.books.list() as Promise<Book[]>,
+    queryFn: async () => await blink.db.books.list(),
   })
 
-  const { data: users = [] } = useQuery<LibraryUser[]>({
+  const { data: users = [] } = useQuery({
     queryKey: ['library_users'],
-    queryFn: async () => blink.db.libraryUsers.list() as Promise<LibraryUser[]>,
+    queryFn: async () => await blink.db.libraryUsers.list(),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (loan: Loan) => {
-      // Restore book availability before deleting the loan
+    mutationFn: async (loan) => {
       await blink.db.books.update(loan.bookId, { available: 1 })
       await blink.db.loans.delete(loan.id)
     },
@@ -51,18 +45,18 @@ export default function LoansPage() {
   const bookMap = Object.fromEntries(books.map(b => [b.id, b]))
   const userMap = Object.fromEntries(users.map(u => [u.id, u]))
 
-  const statusBadge: Record<string, 'default' | 'secondary' | 'destructive'> = {
+  const statusBadge = {
     active: 'default',
     returned: 'secondary',
     overdue: 'destructive',
   }
-  const statusLabel: Record<string, string> = {
+  const statusLabel = {
     active: 'Activo',
     returned: 'Devuelto',
     overdue: 'Vencido',
   }
 
-  const columns: ColumnDef<Loan>[] = [
+  const columns = [
     { accessorKey: 'id', header: 'ID Préstamo', cell: ({ row }) => <span className="font-mono text-xs">{row.original.id}</span> },
     {
       accessorKey: 'userId', header: 'Usuario',

@@ -3,31 +3,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Page, PageHeader, PageTitle, PageActions, PageBody,
   DataTable, EmptyState, Button, Dialog, DialogContent,
-  DialogHeader, DialogTitle, DialogFooter, Badge, toast,
+  DialogHeader, DialogTitle, Badge, toast,
 } from '@blinkdotnew/ui'
 import { Users, Plus, Trash2, Edit2 } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { LibraryUser } from '../types'
-import type { ColumnDef } from '@tanstack/react-table'
 import UserForm from '../components/UserForm'
 
 export default function UsersPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<LibraryUser | null>(null)
+  const [editing, setEditing] = useState(null)
 
-  const { data: users = [], isLoading } = useQuery<LibraryUser[]>({
+  const { data: users = [], isLoading } = useQuery({
     queryKey: ['library_users'],
-    queryFn: async () => {
-      const result = await blink.db.libraryUsers.list({ orderBy: { createdAt: 'desc' } })
-      return result as LibraryUser[]
-    },
+    queryFn: async () => await blink.db.libraryUsers.list({ orderBy: { createdAt: 'desc' } }),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await blink.db.libraryUsers.delete(id)
-    },
+    mutationFn: async (id) => blink.db.libraryUsers.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['library_users'] })
       toast.success('Usuario eliminado correctamente')
@@ -35,18 +28,18 @@ export default function UsersPage() {
     onError: () => toast.error('Error al eliminar el usuario'),
   })
 
-  const userTypeLabel: Record<string, string> = {
+  const userTypeLabel = {
     student: 'Estudiante',
     teacher: 'Docente',
     external: 'Externo',
   }
-  const userTypeBadge: Record<string, 'default' | 'secondary' | 'outline'> = {
+  const userTypeBadge = {
     student: 'default',
     teacher: 'secondary',
     external: 'outline',
   }
 
-  const columns: ColumnDef<LibraryUser>[] = [
+  const columns = [
     { accessorKey: 'id', header: 'ID', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.id.slice(0, 8)}...</span> },
     { accessorKey: 'firstName', header: 'Nombre', cell: ({ row }) => `${row.original.firstName} ${row.original.lastName}` },
     { accessorKey: 'email', header: 'Correo' },
@@ -105,4 +98,5 @@ export default function UsersPage() {
       </Dialog>
     </Page>
   )
-}
+}   
+

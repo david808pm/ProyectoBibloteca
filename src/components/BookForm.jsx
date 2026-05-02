@@ -1,33 +1,32 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, toast } from '@blinkdotnew/ui'
 import { blink } from '../blink/client'
+import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 
+const STORAGE_KEY = 'form:book'
 const GENRES = ['Ficción', 'No Ficción', 'Ciencia', 'Historia', 'Tecnología', 'Arte', 'Filosofía', 'Literatura', 'Biología', 'Derecho', 'Economía', 'Matemáticas', 'Medicina', 'Psicología', 'Otro']
 
-interface Props {
-  onSuccess: () => void
-  onCancel: () => void
-}
-
-interface FormValues {
-  title: string
-  author: string
-  editor: string
-  pages: number
-  shelfLocation: string
-  genre: string
-  quantity: number
-}
-
-export default function BookForm({ onSuccess, onCancel }: Props) {
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    defaultValues: { pages: 1, genre: 'Ficción', quantity: 1 },
+export default function BookForm({ onSuccess, onCancel }) {
+  const draft = loadDraft(STORAGE_KEY, {})
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: {
+      pages: 1,
+      genre: 'Ficción',
+      quantity: 1,
+      ...draft,
+    },
   })
+
+  useEffect(() => {
+    const subscription = watch((values) => saveDraft(STORAGE_KEY, values))
+    return () => subscription.unsubscribe?.()
+  }, [watch])
 
   const genre = watch('genre')
   const quantity = watch('quantity')
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values) => {
     try {
       const qty = Math.max(1, Number(values.quantity))
       const base = {
@@ -40,7 +39,6 @@ export default function BookForm({ onSuccess, onCancel }: Props) {
         available: 1,
       }
 
-      // Create one record per copy
       const creations = Array.from({ length: qty }, (_, i) =>
         blink.db.books.create({
           ...base,
@@ -50,6 +48,7 @@ export default function BookForm({ onSuccess, onCancel }: Props) {
       )
       await Promise.all(creations)
 
+      clearDraft(STORAGE_KEY)
       toast.success(qty === 1 ? 'Libro agregado al inventario' : `${qty} ejemplares agregados al inventario`)
       onSuccess()
     } catch {

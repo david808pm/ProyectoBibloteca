@@ -5,7 +5,6 @@ import {
 } from '@blinkdotnew/ui'
 import { Users, BookOpen, BookMarked, CalendarCheck, Briefcase, TrendingUp } from 'lucide-react'
 import { blink } from '../blink/client'
-import type { Book, Loan } from '../types'
 
 export default function DashboardPage() {
   const { data: usersCount = 0 } = useQuery({
@@ -28,22 +27,21 @@ export default function DashboardPage() {
     queryKey: ['employees_count'],
     queryFn: async () => blink.db.employees.count(),
   })
-  const { data: books = [] } = useQuery<Book[]>({
+  const { data: books = [] } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => blink.db.books.list() as Promise<Book[]>,
+    queryFn: async () => blink.db.books.list(),
   })
-  const { data: loans = [] } = useQuery<Loan[]>({
+  const { data: loans = [] } = useQuery({
     queryKey: ['loans'],
-    queryFn: async () => blink.db.loans.list() as Promise<Loan[]>,
+    queryFn: async () => blink.db.loans.list(),
   })
 
   const availableBooks = books.filter(b => Number(b.available) > 0).length
   const activeLoans = loans.filter(l => l.status === 'active').length
 
-  // Group books by shelf
-  const shelfGroups = books.reduce<Record<string, Book[]>>((acc, book) => {
+  const shelfGroups = books.reduce((acc, book) => {
     const key = book.shelfLocation
-    if (!acc[key]) acc[key] = []
+    acc[key] = acc[key] || []
     acc[key].push(book)
     return acc
   }, {})

@@ -1,32 +1,28 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button, Input, toast } from '@blinkdotnew/ui'
 import { blink } from '../blink/client'
-import type { Employee } from '../types'
+import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 
-interface Props {
-  initialData?: Employee | null
-  onSuccess: () => void
-  onCancel: () => void
-}
-
-interface FormValues {
-  firstName: string
-  lastName: string
-  phone: string
-  email: string
-}
-
-export default function EmployeeForm({ initialData, onSuccess, onCancel }: Props) {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+export default function EmployeeForm({ initialData, onSuccess, onCancel }) {
+  const storageKey = initialData ? `form:employee:${initialData.id}` : 'form:employee:new'
+  const draft = loadDraft(storageKey, {})
+  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm({
     defaultValues: {
       firstName: initialData?.firstName ?? '',
       lastName: initialData?.lastName ?? '',
       phone: initialData?.phone ?? '',
       email: initialData?.email ?? '',
+      ...draft,
     },
   })
 
-  const onSubmit = async (values: FormValues) => {
+  useEffect(() => {
+    const subscription = watch((values) => saveDraft(storageKey, values))
+    return () => subscription.unsubscribe?.()
+  }, [watch, storageKey])
+
+  const onSubmit = async (values) => {
     try {
       if (initialData) {
         await blink.db.employees.update(initialData.id, values)
@@ -39,6 +35,7 @@ export default function EmployeeForm({ initialData, onSuccess, onCancel }: Props
         })
         toast.success('Empleado creado correctamente')
       }
+      clearDraft(storageKey)
       onSuccess()
     } catch {
       toast.error('Error al guardar el empleado')
@@ -59,16 +56,19 @@ export default function EmployeeForm({ initialData, onSuccess, onCancel }: Props
           {errors.lastName && <p className="text-xs text-destructive">Requerido</p>}
         </div>
       </div>
+
       <div className="space-y-1">
         <label className="text-sm font-medium">Teléfono *</label>
         <Input {...register('phone', { required: true })} placeholder="Ej: +57 300 0000000" />
         {errors.phone && <p className="text-xs text-destructive">Requerido</p>}
       </div>
+
       <div className="space-y-1">
         <label className="text-sm font-medium">Correo electrónico *</label>
         <Input {...register('email', { required: true })} type="email" placeholder="empleado@biblioteca.com" />
         {errors.email && <p className="text-xs text-destructive">Requerido</p>}
       </div>
+
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Guardando...' : 'Guardar'}</Button>
