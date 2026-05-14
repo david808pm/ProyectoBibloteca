@@ -9,6 +9,7 @@ import { BookMarked, Plus, Trash2 } from 'lucide-react'
 import { blink } from '../blink/client'
 import LoanForm from '../components/LoanForm'
 import { format } from 'date-fns'
+import { readLocalCollection, deleteLocalRecord, updateLocalRecord } from '../lib/localDb'
 
 export default function LoansPage() {
   const queryClient = useQueryClient()
@@ -16,23 +17,49 @@ export default function LoansPage() {
 
   const { data: loans = [], isLoading } = useQuery({
     queryKey: ['loans'],
-    queryFn: async () => await blink.db.loans.list({ orderBy: { createdAt: 'desc' } }),
+    queryFn: async () => {
+      try {
+        return await blink.db.loans.list({ orderBy: { createdAt: 'desc' } })
+      } catch {
+        return readLocalCollection('loans')
+      }
+    },
   })
 
   const { data: books = [] } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => await blink.db.books.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.books.list()
+      } catch {
+        return readLocalCollection('books')
+      }
+    },
   })
 
   const { data: users = [] } = useQuery({
     queryKey: ['library_users'],
-    queryFn: async () => await blink.db.libraryUsers.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.libraryUsers.list()
+      } catch {
+        return readLocalCollection('library_users')
+      }
+    },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async (loan) => {
-      await blink.db.books.update(loan.bookId, { available: 1 })
-      await blink.db.loans.delete(loan.id)
+      try {
+        await blink.db.books.update(loan.bookId, { available: 1 })
+      } catch {
+        updateLocalRecord('books', loan.bookId, { available: 1 })
+      }
+      try {
+        await blink.db.loans.delete(loan.id)
+      } catch {
+        deleteLocalRecord('loans', loan.id)
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] })

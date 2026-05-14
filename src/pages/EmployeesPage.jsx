@@ -8,6 +8,7 @@ import {
 import { Briefcase, Plus, Trash2, Edit2 } from 'lucide-react'
 import { blink } from '../blink/client'
 import EmployeeForm from '../components/EmployeeForm'
+import { readLocalCollection, deleteLocalRecord } from '../lib/localDb'
 
 export default function EmployeesPage() {
   const queryClient = useQueryClient()
@@ -16,11 +17,23 @@ export default function EmployeesPage() {
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees'],
-    queryFn: async () => await blink.db.employees.list({ orderBy: { createdAt: 'desc' } }),
+    queryFn: async () => {
+      try {
+        return await blink.db.employees.list({ orderBy: { createdAt: 'desc' } })
+      } catch {
+        return readLocalCollection('employees')
+      }
+    },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => blink.db.employees.delete(id),
+    mutationFn: async (id) => {
+      try {
+        await blink.db.employees.delete(id)
+      } catch {
+        deleteLocalRecord('employees', id)
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
       toast.success('Empleado eliminado')

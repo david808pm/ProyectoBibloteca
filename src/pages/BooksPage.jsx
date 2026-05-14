@@ -8,7 +8,8 @@ import {
 import { BookOpen, Plus, Trash2, Search, MapPin } from 'lucide-react'
 import { blink } from '../blink/client'
 import BookForm from '../components/BookForm'
-import Card from '../components/card'
+import BookCard from '../components/card'
+import { readLocalCollection, deleteLocalRecord } from '../lib/localDb'
 
 export default function BooksPage() {
   const queryClient = useQueryClient()
@@ -17,11 +18,23 @@ export default function BooksPage() {
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => await blink.db.books.list({ orderBy: { createdAt: 'desc' } }),
+    queryFn: async () => {
+      try {
+        return await blink.db.books.list({ orderBy: { createdAt: 'desc' } })
+      } catch {
+        return readLocalCollection('books')
+      }
+    },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => blink.db.books.delete(id),
+    mutationFn: async (id) => {
+      try {
+        await blink.db.books.delete(id)
+      } catch {
+        deleteLocalRecord('books', id)
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] })
       toast.success('Libro eliminado')
@@ -30,7 +43,12 @@ export default function BooksPage() {
   })
 
   const filtered = shelfSearch
-    ? books.filter(b => b.shelfLocation.toLowerCase().includes(shelfSearch.toLowerCase()) || b.genre.toLowerCase().includes(shelfSearch.toLowerCase()))
+    ? books.filter(b =>
+        b.shelfLocation?.toLowerCase().includes(shelfSearch.toLowerCase()) ||
+        b.genre?.toLowerCase().includes(shelfSearch.toLowerCase()) ||
+        b.title?.toLowerCase().includes(shelfSearch.toLowerCase()) ||
+        b.author?.toLowerCase().includes(shelfSearch.toLowerCase())
+      )
     : books
 
   const columns = [
@@ -76,20 +94,30 @@ export default function BooksPage() {
         </PageActions>
       </PageHeader>
       <PageBody>
-        <div className="mb-4 flex items-center gap-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por estantería (ej: EST-001) o género..."
-            value={shelfSearch}
-            onChange={e => setShelfSearch(e.target.value)}
-            className="max-w-md"
-          />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por título, autor, estantería o género..."
+              value={shelfSearch}
+              onChange={e => setShelfSearch(e.target.value)}
+              className="max-w-md"
+            />
+          </div>
           {shelfSearch && (
             <span className="text-sm text-muted-foreground">
               {filtered.length} resultado(s) en <span className="font-semibold text-primary">{shelfSearch}</span>
             </span>
           )}
         </div>
+
+        {filtered.length > 0 && (
+          <div className="grid gap-4 pb-6 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((book) => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+        )}
 
         {filtered.length === 0 && !isLoading
           ? <EmptyState icon={<BookOpen />} title="Sin libros registrados" description="Agrega el primer libro al inventario." action={{ label: 'Agregar Libro', onClick: () => setOpen(true) }} />
