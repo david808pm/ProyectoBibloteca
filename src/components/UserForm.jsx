@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, toast } from '@blinkdotnew/ui'
 import { blink } from '../blink/client'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
+import { createLocalRecord, updateLocalRecord, getLocalRecord } from '../lib/localDb'
 
 export default function UserForm({ initialData, onSuccess, onCancel }) {
   const storageKey = initialData ? `form:user:${initialData.id}` : 'form:user:new'
@@ -36,15 +37,21 @@ export default function UserForm({ initialData, onSuccess, onCancel }) {
           phone: values.phone,
           email: values.email,
           userType: values.userType,
-        })
+        }).catch(() => updateLocalRecord('library_users', initialData.id, {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          phone: values.phone,
+          email: values.email,
+          userType: values.userType,
+        }))
         toast.success('Usuario actualizado')
       } else {
-        const existing = await blink.db.libraryUsers.get(values.id.trim())
+        const existing = await blink.db.libraryUsers.get(values.id.trim()).catch(() => getLocalRecord('library_users', values.id.trim()))
         if (existing) {
           toast.error(`El ID "${values.id}" ya está registrado`)
           return
         }
-        await blink.db.libraryUsers.create({
+        const user = {
           id: values.id.trim(),
           firstName: values.firstName,
           lastName: values.lastName,
@@ -52,7 +59,8 @@ export default function UserForm({ initialData, onSuccess, onCancel }) {
           email: values.email,
           userType: values.userType,
           createdAt: new Date().toISOString(),
-        })
+        }
+        await blink.db.libraryUsers.create(user).catch(() => createLocalRecord('library_users', user))
         toast.success('Usuario creado correctamente')
       }
       clearDraft(storageKey)

@@ -9,6 +9,7 @@ import { CalendarCheck, Plus, Trash2 } from 'lucide-react'
 import { blink } from '../blink/client'
 import ReservationForm from '../components/ReservationForm'
 import { format } from 'date-fns'
+import { readLocalCollection, deleteLocalRecord } from '../lib/localDb'
 
 export default function ReservationsPage() {
   const queryClient = useQueryClient()
@@ -16,26 +17,56 @@ export default function ReservationsPage() {
 
   const { data: reservations = [], isLoading } = useQuery({
     queryKey: ['reservations'],
-    queryFn: async () => await blink.db.reservations.list({ orderBy: { createdAt: 'desc' } }),
+    queryFn: async () => {
+      try {
+        return await blink.db.reservations.list({ orderBy: { createdAt: 'desc' } })
+      } catch {
+        return readLocalCollection('reservations')
+      }
+    },
   })
 
   const { data: books = [] } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => await blink.db.books.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.books.list()
+      } catch {
+        return readLocalCollection('books')
+      }
+    },
   })
 
   const { data: users = [] } = useQuery({
     queryKey: ['library_users'],
-    queryFn: async () => await blink.db.libraryUsers.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.libraryUsers.list()
+      } catch {
+        return readLocalCollection('library_users')
+      }
+    },
   })
 
   const { data: employees = [] } = useQuery({
     queryKey: ['employees'],
-    queryFn: async () => await blink.db.employees.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.employees.list()
+      } catch {
+        return readLocalCollection('employees')
+      }
+    },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => blink.db.reservations.delete(id),
+    mutationFn: async (id) => {
+      try {
+        await blink.db.reservations.delete(id)
+      } catch {
+        deleteLocalRecord('reservations', id)
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] })
       toast.success('Reserva eliminada')

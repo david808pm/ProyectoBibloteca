@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, toast } from '@blinkdotnew/ui'
 import { blink } from '../blink/client'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
+import { createLocalRecord } from '../lib/localDb'
 
 const STORAGE_KEY = 'form:book'
 const GENRES = ['Ficción', 'No Ficción', 'Ciencia', 'Historia', 'Tecnología', 'Arte', 'Filosofía', 'Literatura', 'Biología', 'Derecho', 'Economía', 'Matemáticas', 'Medicina', 'Psicología', 'Otro']
@@ -11,9 +12,15 @@ export default function BookForm({ onSuccess, onCancel }) {
   const draft = loadDraft(STORAGE_KEY, {})
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
+      title: '',
+      author: '',
+      editor: '',
       pages: 1,
+      shelfLocation: '',
       genre: 'Ficción',
       quantity: 1,
+      coverUrl: '',
+      description: '',
       ...draft,
     },
   })
@@ -36,16 +43,19 @@ export default function BookForm({ onSuccess, onCancel }) {
         pages: Number(values.pages),
         shelfLocation: values.shelfLocation.toUpperCase(),
         genre: values.genre,
+        coverUrl: values.coverUrl?.trim() || '',
+        description: values.description?.trim() || '',
         available: 1,
       }
 
-      const creations = Array.from({ length: qty }, (_, i) =>
-        blink.db.books.create({
+      const creations = Array.from({ length: qty }, (_, i) => {
+        const book = {
           ...base,
           id: `LIB-${Date.now()}-${i + 1}`,
           createdAt: new Date().toISOString(),
-        })
-      )
+        }
+        return blink.db.books.create(book).catch(() => createLocalRecord('books', book))
+      })
       await Promise.all(creations)
 
       clearDraft(STORAGE_KEY)
@@ -92,6 +102,21 @@ export default function BookForm({ onSuccess, onCancel }) {
           />
           {errors.shelfLocation && <p className="text-xs text-destructive">Requerido</p>}
         </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium">URL de portada</label>
+        <Input {...register('coverUrl')} placeholder="https://.../imagen.jpg" />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Descripción</label>
+        <textarea
+          {...register('description')}
+          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+          rows={4}
+          placeholder="Escribe una breve descripción del libro"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

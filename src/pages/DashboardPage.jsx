@@ -5,35 +5,78 @@ import {
 } from '@blinkdotnew/ui'
 import { Users, BookOpen, BookMarked, CalendarCheck, Briefcase, TrendingUp } from 'lucide-react'
 import { blink } from '../blink/client'
+import { readLocalCollection, countLocalRecords } from '../lib/localDb'
 
 export default function DashboardPage() {
   const { data: usersCount = 0 } = useQuery({
     queryKey: ['users_count'],
-    queryFn: async () => blink.db.libraryUsers.count(),
+    queryFn: async () => {
+      try {
+        return await blink.db.libraryUsers.count()
+      } catch {
+        return countLocalRecords('library_users')
+      }
+    },
   })
   const { data: booksCount = 0 } = useQuery({
     queryKey: ['books_count'],
-    queryFn: async () => blink.db.books.count(),
+    queryFn: async () => {
+      try {
+        return await blink.db.books.count()
+      } catch {
+        return countLocalRecords('books')
+      }
+    },
   })
   const { data: loansCount = 0 } = useQuery({
     queryKey: ['loans_count'],
-    queryFn: async () => blink.db.loans.count(),
+    queryFn: async () => {
+      try {
+        return await blink.db.loans.count()
+      } catch {
+        return countLocalRecords('loans')
+      }
+    },
   })
   const { data: reservationsCount = 0 } = useQuery({
     queryKey: ['reservations_count'],
-    queryFn: async () => blink.db.reservations.count(),
+    queryFn: async () => {
+      try {
+        return await blink.db.reservations.count()
+      } catch {
+        return countLocalRecords('reservations')
+      }
+    },
   })
   const { data: employeesCount = 0 } = useQuery({
     queryKey: ['employees_count'],
-    queryFn: async () => blink.db.employees.count(),
+    queryFn: async () => {
+      try {
+        return await blink.db.employees.count()
+      } catch {
+        return countLocalRecords('employees')
+      }
+    },
   })
   const { data: books = [] } = useQuery({
     queryKey: ['books'],
-    queryFn: async () => blink.db.books.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.books.list()
+      } catch {
+        return readLocalCollection('books')
+      }
+    },
   })
   const { data: loans = [] } = useQuery({
     queryKey: ['loans'],
-    queryFn: async () => blink.db.loans.list(),
+    queryFn: async () => {
+      try {
+        return await blink.db.loans.list()
+      } catch {
+        return readLocalCollection('loans')
+      }
+    },
   })
 
   const availableBooks = books.filter(b => Number(b.available) > 0).length

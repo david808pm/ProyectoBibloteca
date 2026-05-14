@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, toast } from '@blinkdotnew/ui'
 import { blink } from '../blink/client'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
+import { createLocalRecord, updateLocalRecord } from '../lib/localDb'
 
 const userTypeLabel = {
   student: 'Estudiante',
@@ -38,13 +39,14 @@ export default function LoanForm({ books, users, onSuccess, onCancel }) {
   const onSubmit = async (values) => {
     try {
       const user = users.find(u => u.id === values.userId)
-      await blink.db.loans.create({
+      const loan = {
         ...values,
         id: `PREST-${Date.now()}`,
         userType: user?.userType ?? 'student',
         createdAt: new Date().toISOString(),
-      })
-      await blink.db.books.update(values.bookId, { available: 0 })
+      }
+      await blink.db.loans.create(loan).catch(() => createLocalRecord('loans', loan))
+      await blink.db.books.update(values.bookId, { available: 0 }).catch(() => updateLocalRecord('books', values.bookId, { available: 0 }))
       clearDraft(storageKey)
       toast.success('Préstamo registrado correctamente')
       onSuccess()

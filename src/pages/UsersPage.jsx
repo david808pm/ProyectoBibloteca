@@ -8,6 +8,7 @@ import {
 import { Users, Plus, Trash2, Edit2 } from 'lucide-react'
 import { blink } from '../blink/client'
 import UserForm from '../components/UserForm'
+import { readLocalCollection, deleteLocalRecord } from '../lib/localDb'
 
 export default function UsersPage() {
   const queryClient = useQueryClient()
@@ -16,11 +17,23 @@ export default function UsersPage() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['library_users'],
-    queryFn: async () => await blink.db.libraryUsers.list({ orderBy: { createdAt: 'desc' } }),
+    queryFn: async () => {
+      try {
+        return await blink.db.libraryUsers.list({ orderBy: { createdAt: 'desc' } })
+      } catch {
+        return readLocalCollection('library_users')
+      }
+    },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (id) => blink.db.libraryUsers.delete(id),
+    mutationFn: async (id) => {
+      try {
+        await blink.db.libraryUsers.delete(id)
+      } catch {
+        deleteLocalRecord('library_users', id)
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['library_users'] })
       toast.success('Usuario eliminado correctamente')

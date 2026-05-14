@@ -4,6 +4,7 @@ import { Button, Input, Select, SelectTrigger, SelectContent, SelectItem, Select
 import { AlertCircle } from 'lucide-react'
 import { blink } from '../blink/client'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
+import { createLocalRecord } from '../lib/localDb'
 
 export default function ReservationForm({ books, users, employees, onSuccess, onCancel }) {
   const storageKey = 'form:reservation:new'
@@ -35,11 +36,12 @@ export default function ReservationForm({ books, users, employees, onSuccess, on
 
   const onSubmit = async (values) => {
     try {
-      await blink.db.reservations.create({
+      const reservation = {
         ...values,
         id: `RES-${Date.now()}`,
         createdAt: new Date().toISOString(),
-      })
+      }
+      await blink.db.reservations.create(reservation).catch(() => createLocalRecord('reservations', reservation))
       clearDraft(storageKey)
       toast.success('Reserva registrada correctamente')
       onSuccess()
